@@ -1,11 +1,18 @@
 import datetime
 from flask import Flask, jsonify, request
+from flask_cors import CORS, cross_origin
 from flask_sqlalchemy import SQLAlchemy
 
 app = Flask(__name__)
+
+# db
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:////tmp/test.db'
 # To reset the db, run: rm /tmp/test.db
 db = SQLAlchemy(app)
+
+# cors
+cors = CORS(app)
+app.config['CORS_HEADERS'] = 'Content-Type'
 
 class Instructor(db.Model):
   id = db.Column(db.Integer, primary_key=True)
@@ -107,6 +114,7 @@ db.create_all()
 
 # Usage: POST /instructor (fields in request body)
 @app.route("/instructor", methods=["POST"])
+@cross_origin()
 def create_instructor():
   if request.method == "POST":
     json_data = request.json
@@ -125,6 +133,7 @@ def create_instructor():
 
 # Usage: GET /instructor/<id>
 @app.route("/instructor/<int:id>", methods=["GET"])
+@cross_origin()
 def get_instructor(id):
   if request.method == "GET":
     instructor = Instructor.query.filter_by(id=id).first()
@@ -134,6 +143,7 @@ def get_instructor(id):
 
 # Usage: POST /course (fields in request body)
 @app.route("/course", methods=["POST"])
+@cross_origin()
 def create_course():
   if request.method == "POST":
     json_data = request.json
@@ -154,6 +164,7 @@ def create_course():
 # Usage: GET /course/<id>
 # For a specific id, will provide course
 @app.route("/course/<int:id>", methods=["GET"])
+@cross_origin()
 def get_course(id):
   if request.method == "GET":
     course = Course.query.filter_by(id=id).first()
@@ -164,6 +175,7 @@ def get_course(id):
 # Usage: GET /courses?instructor_id=<instructor_id>
 # Could provide multiple courses for a single instructor
 @app.route("/courses", methods=["GET"])
+@cross_origin()
 def get_courses_by_instructor_id():
   if request.method == "GET":
     instructor_id = request.args["instructor_id"]
@@ -174,6 +186,7 @@ def get_courses_by_instructor_id():
 
 # Usage: POST /past_session (fields in request body)
 @app.route("/past_session", methods=["POST"])
+@cross_origin()
 def create_past_session():
   if request.method == "POST":
     json_data = request.json
@@ -192,6 +205,7 @@ def create_past_session():
 
 # Usage: GET /past_sessions?course_id=<course_id>
 @app.route("/past_sessions", methods=["GET"])
+@cross_origin()
 def get_past_sessions_by_course_id():
   if request.method == "GET":
     course_id = request.args["course_id"]
@@ -202,6 +216,7 @@ def get_past_sessions_by_course_id():
 
 # Usage: POST /tag (fields in requestbody)
 @app.route("/tag", methods=["POST"])
+@cross_origin()
 def create_tag():
   if request.method == "POST":
     json_data = request.json
@@ -219,6 +234,7 @@ def create_tag():
 
 # Usage: GET /tags?course_id=<course_id>
 @app.route("/tags", methods=["GET"])
+@cross_origin()
 def get_tags_by_course_instructor():
   if request.method == "GET":
     course_id = request.args["course_id"]
@@ -226,3 +242,37 @@ def get_tags_by_course_instructor():
     return jsonify([tag.as_dict() for tag in tags])
   else:
     assert False, "Received non-GET request to /tags"
+
+"""
+
+function: matchQuestionsToTags
+input: list of questions (schema unknown), course id (course whose tags you want to use)
+output: list of questions (schema updated with the tag)
+
+{
+  title: ...,
+  question_body: ...
+}
+
+becomes...
+
+{
+  title: ...,
+  question_body: ...,
+  tag: tag_id
+}
+
+function: useNlpPrediction
+input: question_body, tag
+output: similarity score
+(using spacy: https://spacy.io/usage/linguistic-features#vectors-similarity)
+
+compare question with all tags, assign the tag with highest similarity
+
+Q1, Q2, Q3
+T1, T2
+
+Q1, T1 --> 0.75
+Q1, T2 --> 0.43
+
+"""

@@ -245,9 +245,9 @@ def get_tags_by_course_instructor():
 
 """
 
-function: matchQuestionsToTags
-input: list of questions (schema unknown), course id (course whose tags you want to use)
-output: list of questions (schema updated with the tag)
+function: matchQuestionToTags
+input: question (schema unknown), course id (course whose tags you want to use)
+output: question (with schema updated with the tag)
 
 {
   title: ...,
@@ -269,8 +269,8 @@ output: similarity score
 
 compare question with all tags, assign the tag with highest similarity
 
-Q1, Q2, Q3
-T1, T2
+Question: Q1
+Tags: T1, T2
 
 Q1, T1 --> 0.75
 Q1, T2 --> 0.43

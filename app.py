@@ -5,6 +5,7 @@ from flask_socketio import SocketIO, join_room, leave_room, send, emit
 from flask_sqlalchemy import SQLAlchemy
 import random
 import string
+import spacy
 
 app = Flask(__name__)
 
@@ -20,6 +21,9 @@ app.config['CORS_HEADERS'] = 'Content-Type'
 # socket
 app.config['SECRET_KEY'] = 'secret!'
 socketio = SocketIO(app, cors_allowed_origins="*")
+
+# nlp
+nlp = spacy.load("en_core_web_md")
 
 class Instructor(db.Model):
   id = db.Column(db.Integer, primary_key=True)
@@ -118,6 +122,116 @@ db.create_all()
 # print("Tags for physics:",
 #       Tag.query.filter_by(course_id=course2.id).all())
 # print()
+
+# More test data
+
+john = Instructor(first_name='John', last_name='Doe', email='john@ncsu.edu')
+db.session.add(john)
+db.session.commit()
+
+csc116 = Course(instructor_id=john.id, department='CSC', number=116, title='Introduction to Computing')
+csc216 = Course(instructor_id=john.id, department='CSC', number=216, title='Software Development Fundamentals')
+csc226 = Course(instructor_id=john.id, department='CSC', number=226, title='Discrete Mathematics for Computer Scientists')
+csc230 = Course(instructor_id=john.id, department='CSC', number=230, title='C and Software Tools')
+db.session.add(csc116)
+db.session.add(csc216)
+db.session.add(csc226)
+db.session.add(csc230)
+db.session.commit()
+
+conditionals = Tag(name="Conditionals", course_id=csc116.id)
+classes = Tag(name="Classes", course_id=csc116.id)
+polymorphism = Tag(name="Polymorphism", course_id=csc116.id)
+
+db.session.add(conditionals)
+db.session.add(classes)
+db.session.add(polymorphism)
+db.session.commit()
+
+queues = Tag(name="Queues", course_id=csc216.id)
+recursion = Tag(name="Recursion", course_id=csc216.id)
+testing = Tag(name="Testing", course_id=csc216.id)
+
+db.session.add(queues)
+db.session.add(recursion)
+db.session.add(testing)
+db.session.commit()
+
+recurrences = Tag(name="Recurrences", course_id=csc226.id)
+induction = Tag(name="Induction", course_id=csc226.id)
+graph_theory = Tag(name="Graph Theory", course_id=csc226.id)
+
+db.session.add(recurrences)
+db.session.add(induction)
+db.session.add(graph_theory)
+db.session.commit()
+
+memory = Tag(name="Memory", course_id=csc230.id)
+pointers = Tag(name="Pointers", course_id=csc230.id)
+system_calls = Tag(name="System Calls", course_id=csc230.id)
+
+db.session.add(memory)
+db.session.add(pointers)
+db.session.add(system_calls)
+db.session.commit()
+
+csc116_stats = [
+  ("2/14/2022", 0.73),
+  ("2/21/2022", 0.72),
+  ("2/28/2022", 0.79),
+  ("3/7/2022", 0.80),
+  ("3/14/2022", 0.85),
+  ("3/21/2022", 0.89),
+  ("3/28/2022", 0.94),
+]
+
+csc216_stats = [
+  ("2/14/2022", 0.78),
+  ("2/21/2022", 0.69),
+  ("2/28/2022", 0.74),
+  ("3/7/2022", 0.89),
+  ("3/14/2022", 0.86),
+  ("3/21/2022", 0.90),
+  ("3/28/2022", 0.91),
+]
+
+csc226_stats = [
+  ("2/14/2022", 0.75),
+  ("2/21/2022", 0.76),
+  ("2/28/2022", 0.79),
+  ("3/7/2022", 0.85),
+  ("3/14/2022", 0.86),
+  ("3/21/2022", 0.96),
+  ("3/28/2022", 0.98),
+]
+
+csc230_stats = [
+  ("2/14/2022", 0.67),
+  ("2/21/2022", 0.64),
+  ("2/28/2022", 0.56),
+  ("3/7/2022", 0.74),
+  ("3/14/2022", 0.76),
+  ("3/21/2022", 0.87),
+  ("3/28/2022", 0.78),
+]
+
+format_date = lambda date: datetime.datetime.strptime(date, '%m/%d/%Y')
+for date, percent in csc116_stats:
+  session = PastSession(timestamp=format_date(date), engagement_percent=percent, course_id=csc116.id)
+  db.session.add(session)
+  db.session.commit()
+for date, percent in csc216_stats:
+  session = PastSession(timestamp=format_date(date), engagement_percent=percent, course_id=csc216.id)
+  db.session.add(session)
+  db.session.commit()
+for date, percent in csc226_stats:
+  session = PastSession(timestamp=format_date(date), engagement_percent=percent, course_id=csc226.id)
+  db.session.add(session)
+  db.session.commit()
+for date, percent in csc230_stats:
+  session = PastSession(timestamp=format_date(date), engagement_percent=percent, course_id=csc230.id)
+  db.session.add(session)
+  db.session.commit()
 
 # Usage: POST /instructor (fields in request body)
 @app.route("/instructor", methods=["POST"])
@@ -280,6 +394,16 @@ def create_session():
   print("Created sessions:", created_sessions)
   return jsonify(session_code)
 
+sent_tags = None
+
+# Consumes tags sent from the instructor's dashboard to the
+# student's view of the session
+@socketio.on('accept_tags')
+def provide_tags(data):
+  global sent_tags
+  sent_tags = data
+  emit('provide_tags', data, broadcast=True)
+
 # Consumes the "create_question" event sent from a client
 # and adds it to the list of questions for that session code (questions[session_code]).
 # Emits the updated list of questions back to the clients to update the
@@ -289,14 +413,27 @@ def create_question(data):
   title = data['title']
   question_body = data['question_body']
   session_code = data['session_code']
+  
+  assert sent_tags
+
+  # TODO: predict using NLP
+  best_tag = None
+  best_score = None
+  for tag in sent_tags:
+    doc1 = nlp(title + ". " + question_body)
+    doc2 = nlp(tag["name"])
+
+    score = doc1.similarity(doc2)
+    
+    if not best_score or not best_tag or score > best_score:
+      best_score = score
+      best_tag = tag["name"]
 
   questions[session_code].append({
     "title": title,
     "question_body": question_body,
-    "tag_id": None
+    "tag": best_tag
   })
-
-  # TODO: predict using NLP
 
   # emit updated questions event to all connected clients
   emit('updated_questions', questions[session_code], broadcast=True)

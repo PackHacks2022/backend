@@ -1,6 +1,7 @@
 import datetime
 from flask import Flask, jsonify, request
 from flask_cors import CORS, cross_origin
+from flask_socketio import SocketIO, join_room, leave_room, send, emit
 from flask_sqlalchemy import SQLAlchemy
 
 app = Flask(__name__)
@@ -13,6 +14,10 @@ db = SQLAlchemy(app)
 # cors
 cors = CORS(app)
 app.config['CORS_HEADERS'] = 'Content-Type'
+
+# socket
+app.config['SECRET_KEY'] = 'secret!'
+socketio = SocketIO(app, cors_allowed_origins="*")
 
 class Instructor(db.Model):
   id = db.Column(db.Integer, primary_key=True)
@@ -243,6 +248,41 @@ def get_tags_by_course_instructor():
   else:
     assert False, "Received non-GET request to /tags"
 
+@app.route("/login", methods=["GET"])
+@cross_origin()
+def login():
+  if request.method == "GET":
+    email = request.args["email"]
+    instructor = Instructor.query.filter_by(email=email).first()
+
+    if not instructor:
+      return jsonify(None)
+    else:
+      return jsonify("GOPACK")
+
+created_sessions = []
+connected_clients = {}
+
+@app.route("/create_session", methods=["GET"])
+@cross_origin()
+def create_session():
+  # add code to keep track of which sessions are created
+  session_code = "QWERTY"
+  created_sessions.append(session_code)
+  connected_clients[session_code] = [] # there are no clients when the session is established
+  print("Created sessions:", created_sessions)
+  return jsonify(session_code)
+
+@socketio.on('join')
+def on_join(data):
+  name = data['name']
+  room = data['room']
+  print(name, "joined room", room)
+  join_room(room)
+  connected_clients[room] = connected_clients[room] + [name]
+  print("Clients connected to", room, connected_clients[room])
+  send(connected_clients[room], broadcast=True, to=room)
+
 """
 
 function: matchQuestionToTags
@@ -276,3 +316,24 @@ Q1, T1 --> 0.75
 Q1, T2 --> 0.43
 
 """
+
+"""
+
+Instructor -> creates a session (aka room, identified by a code)
+https://flask-socketio.readthedocs.io/en/latest/getting_started.html#rooms
+
+Students join a session (using the code)
+Student -- join room event (name, room) --> S
+Session code will be passed in the join event
+
+C -- create question event --> S
+S: predicts using NLP, adds a tag ({title, question_body, tag_id (null)} -> {title, question_body, tag_id})
+S: update list of questions with the new question added
+S -- broadcast all updated questions --> C1
+S -- broadcast all updated questions --> C2
+S -- broadcast all updated questions --> C3
+
+"""
+
+if __name__ == '__main__':
+  socketio.run(app)

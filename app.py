@@ -184,7 +184,7 @@ def get_course(id):
 def get_courses_by_instructor_id():
   if request.method == "GET":
     instructor_id = request.args["instructor_id"]
-    courses = Course.query.filter_by(instructor_id=instructor_id)
+    courses = Course.query.filter_by(instructor_id=instructor_id).all()
     return jsonify([course.as_dict() for course in courses])
   else:
     assert False, "Received non-POST request to /courses"
@@ -214,7 +214,7 @@ def create_past_session():
 def get_past_sessions_by_course_id():
   if request.method == "GET":
     course_id = request.args["course_id"]
-    past_sessions = PastSession.query.filter_by(course_id=course_id)
+    past_sessions = PastSession.query.filter_by(course_id=course_id).all()
     return jsonify([past_session.as_dict() for past_session in past_sessions])
   else:
     assert False, "Received non-GET request to /past_sessions"
@@ -243,7 +243,7 @@ def create_tag():
 def get_tags_by_course_instructor():
   if request.method == "GET":
     course_id = request.args["course_id"]
-    tags = Tag.query.filter_by(course_id=course_id)
+    tags = Tag.query.filter_by(course_id=course_id).all()
     return jsonify([tag.as_dict() for tag in tags])
   else:
     assert False, "Received non-GET request to /tags"
@@ -258,7 +258,7 @@ def login():
     if not instructor:
       return jsonify(None)
     else:
-      return jsonify("GOPACK")
+      return jsonify(instructor.id)
 
 created_sessions = []
 connected_clients = {}

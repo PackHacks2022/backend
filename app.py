@@ -139,22 +139,22 @@ db.session.add(csc226)
 db.session.add(csc230)
 db.session.commit()
 
-conditionals = Tag(name="If and Else", course_id=csc116.id)
+# conditionals = Tag(name="If and Else", course_id=csc116.id)
 classes = Tag(name="Classes", course_id=csc116.id)
 polymorphism = Tag(name="OOP", course_id=csc116.id)
 
-db.session.add(conditionals)
+# db.session.add(conditionals)
 db.session.add(classes)
 db.session.add(polymorphism)
 db.session.commit()
 
-queues = Tag(name="Queues", course_id=csc216.id)
+queues = Tag(name="Queue", course_id=csc216.id)
 recursion = Tag(name="Recursion", course_id=csc216.id)
-testing = Tag(name="Testing", course_id=csc216.id)
+if_and_else = Tag(name="Flow", course_id=csc216.id)
 
 db.session.add(queues)
 db.session.add(recursion)
-db.session.add(testing)
+db.session.add(if_and_else)
 db.session.commit()
 
 recurrences = Tag(name="Recurrences", course_id=csc226.id)

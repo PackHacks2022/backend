@@ -250,6 +250,8 @@ def get_tags_by_course_instructor():
   else:
     assert False, "Received non-GET request to /tags"
 
+# Login function, which sends the instructor id (to identify which instructor is logged in)
+# and a special phrase as a password.
 @app.route("/login", methods=["GET"])
 @cross_origin()
 def login():
@@ -262,26 +264,15 @@ def login():
     else:
       return jsonify({"instructor_id": instructor.id, "phrase": "GOPACK"})
 
-created_sessions = []  # all active session codes
-connected_clients = {} # all clients for the specified session (connected_clients[session_code])
-questions = {}         # all question for the specified session (question[session_code])
+created_sessions = []  # keeps track of all active session codes
+connected_clients = {} # keeps track of all clients for the specified session (connected_clients[session_code])
+questions = {}         # keeps track of all question for the specified session (question[session_code])
 
-"""
-
-Question Schema:
-- Title (string)
-- Question Body (string)
-- Tag Id (int, will be null before prediction)
-
-"""
-
+# Starts a session (called by an instructor), generating a random session id
 @app.route("/create_session", methods=["GET"])
 @cross_origin()
 def create_session():
   phrase = request.args["phrase"]
-  # TODO: account for phrase
-
-  # add code to keep track of which sessions are created
   session_code = ''.join(random.choices(string.ascii_uppercase + string.digits, k = 6))
   created_sessions.append(session_code)
   connected_clients[session_code] = [] # there are no clients when the session is established
@@ -289,6 +280,10 @@ def create_session():
   print("Created sessions:", created_sessions)
   return jsonify(session_code)
 
+# Consumes the "create_question" event sent from a client
+# and adds it to the list of questions for that session code (questions[session_code]).
+# Emits the updated list of questions back to the clients to update the
+# frontend in real time.
 @socketio.on('create_question')
 def create_question(data):
   title = data['title']
@@ -306,6 +301,7 @@ def create_question(data):
   # emit updated questions event to all connected clients
   emit('updated_questions', questions[session_code], broadcast=True)
 
+# Connects a client to the specified room, given by a session code.
 @socketio.on('join')
 def on_join(data):
   name = data['name']

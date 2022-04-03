@@ -3,6 +3,8 @@ from flask import Flask, jsonify, request
 from flask_cors import CORS, cross_origin
 from flask_socketio import SocketIO, join_room, leave_room, send, emit
 from flask_sqlalchemy import SQLAlchemy
+import random
+import string
 
 app = Flask(__name__)
 
@@ -258,20 +260,51 @@ def login():
     if not instructor:
       return jsonify(None)
     else:
-      return jsonify(instructor.id)
+      return jsonify({"instructor_id": instructor.id, "phrase": "GOPACK"})
 
-created_sessions = []
-connected_clients = {}
+created_sessions = []  # all active session codes
+connected_clients = {} # all clients for the specified session (connected_clients[session_code])
+questions = {}         # all question for the specified session (question[session_code])
+
+"""
+
+Question Schema:
+- Title (string)
+- Question Body (string)
+- Tag Id (int, will be null before prediction)
+
+"""
 
 @app.route("/create_session", methods=["GET"])
 @cross_origin()
 def create_session():
+  phrase = request.args["phrase"]
+  # TODO: account for phrase
+
   # add code to keep track of which sessions are created
-  session_code = "QWERTY"
+  session_code = ''.join(random.choices(string.ascii_uppercase + string.digits, k = 6))
   created_sessions.append(session_code)
   connected_clients[session_code] = [] # there are no clients when the session is established
+  questions[session_code] = []         # there are no questions when the session is established
   print("Created sessions:", created_sessions)
   return jsonify(session_code)
+
+@socketio.on('create_question')
+def create_question(data):
+  title = data['title']
+  question_body = data['question_body']
+  session_code = data['session_code']
+
+  questions[session_code].append({
+    "title": title,
+    "question_body": question_body,
+    "tag_id": None
+  })
+
+  # TODO: predict using NLP
+
+  # emit updated questions event to all connected clients
+  emit('updated_questions', questions[session_code], broadcast=True)
 
 @socketio.on('join')
 def on_join(data):
@@ -331,7 +364,7 @@ S: predicts using NLP, adds a tag ({title, question_body, tag_id (null)} -> {tit
 S: update list of questions with the new question added
 S -- broadcast all updated questions --> C1
 S -- broadcast all updated questions --> C2
-S -- broadcast all updated questions --> C3
+S -- broadcast all updated questions - C3
 
 """
 

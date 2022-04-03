@@ -125,23 +125,23 @@ db.create_all()
 
 # More test data
 
-john = Instructor(first_name='John', last_name='Doe', email='john@ncsu.edu')
-db.session.add(john)
+bob = Instructor(first_name='Bob', last_name='Evans', email='rjevans@ncsu.edu')
+db.session.add(bob)
 db.session.commit()
 
-csc116 = Course(instructor_id=john.id, department='CSC', number=116, title='Introduction to Computing')
-csc216 = Course(instructor_id=john.id, department='CSC', number=216, title='Software Development Fundamentals')
-csc226 = Course(instructor_id=john.id, department='CSC', number=226, title='Discrete Mathematics for Computer Scientists')
-csc230 = Course(instructor_id=john.id, department='CSC', number=230, title='C and Software Tools')
+csc116 = Course(instructor_id=bob.id, department='CSC', number=116, title='Introduction to Computing')
+csc216 = Course(instructor_id=bob.id, department='CSC', number=216, title='Software Development Fundamentals')
+csc226 = Course(instructor_id=bob.id, department='CSC', number=226, title='Discrete Mathematics for Computer Scientists')
+csc230 = Course(instructor_id=bob.id, department='CSC', number=230, title='C and Software Tools')
 db.session.add(csc116)
 db.session.add(csc216)
 db.session.add(csc226)
 db.session.add(csc230)
 db.session.commit()
 
-conditionals = Tag(name="Conditionals", course_id=csc116.id)
+conditionals = Tag(name="If and Else", course_id=csc116.id)
 classes = Tag(name="Classes", course_id=csc116.id)
-polymorphism = Tag(name="Polymorphism", course_id=csc116.id)
+polymorphism = Tag(name="OOP", course_id=csc116.id)
 
 db.session.add(conditionals)
 db.session.add(classes)
@@ -159,7 +159,7 @@ db.session.commit()
 
 recurrences = Tag(name="Recurrences", course_id=csc226.id)
 induction = Tag(name="Induction", course_id=csc226.id)
-graph_theory = Tag(name="Graph Theory", course_id=csc226.id)
+graph_theory = Tag(name="Graphs", course_id=csc226.id)
 
 db.session.add(recurrences)
 db.session.add(induction)
@@ -168,7 +168,7 @@ db.session.commit()
 
 memory = Tag(name="Memory", course_id=csc230.id)
 pointers = Tag(name="Pointers", course_id=csc230.id)
-system_calls = Tag(name="System Calls", course_id=csc230.id)
+system_calls = Tag(name="Sys Calls", course_id=csc230.id)
 
 db.session.add(memory)
 db.session.add(pointers)
@@ -416,7 +416,7 @@ def create_question(data):
   
   assert sent_tags
 
-  # TODO: predict using NLP
+  # determine the tag with the greatest similarity score
   best_tag = None
   best_score = None
   for tag in sent_tags:
@@ -429,11 +429,12 @@ def create_question(data):
       best_score = score
       best_tag = tag["name"]
 
-  questions[session_code].append({
+  # update the questions list with the new question and its assigned tag
+  questions[session_code] = [{
     "title": title,
     "question_body": question_body,
     "tag": best_tag
-  })
+  }] + questions[session_code]
 
   # emit updated questions event to all connected clients
   emit('updated_questions', questions[session_code], broadcast=True)
